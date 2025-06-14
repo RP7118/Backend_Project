@@ -1,0 +1,23 @@
+{
+  "name": "backend_project",
+  "version": "1.0.0",
+  "description": "This is my Practice project for Backend Devlopment ",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RP7118/Backend_Project.git"
+  },
+  "author": "Raj Patel",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RP7118/Backend_Project/issues"
+  },
+  "homepage": "https://github.com/RP7118/Backend_Project#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
