@@ -18,6 +18,7 @@ const registerUser = asyncHandler( async(req, res)=>{
     
     
     const {username, email, password, fullname} = req.body
+    console.log(req.body);
     console.log('username : ',username);
     console.log(`username : ${username}`);
 
@@ -26,42 +27,48 @@ const registerUser = asyncHandler( async(req, res)=>{
             throw new APierror(400,"usename, email,password are nesesary feilds")
     }
 
-    if (email != "this"){
-        console.log("complete nahu");
-    }else{
-        console.log("this is goofy");
-    }
+    const existeduser = await User.findOne({
+        $or:[{username},{email}]
+    })
 
-    const existeduser = User.findOne({
-        $or:[username,email]})
-
-    if(!existeduser){
-        console.log("user does not exists");
+    console.log("working1");
+    
+    if(existeduser){
+        console.log("user already exists");
     }
-    const avatarLocalpath = req.files?.avtar[0]?.path;
-    const coverimageLocalpath = req.files?.coverimage[0]?.path;
+    console.log("working1");
+    
+    const avatarLocalpath = await req.files?.avatar[0]?.path;
+    const coverimageLocalpath = await req.files?.coverImage[0]?.path;
+
+    console.log("working1");
 
     if(!avatarLocalpath){
         throw new APierror(400,"Please upload Avtar file ")
     }
 
     const avatar =await uploadFileOnCloudinary(avatarLocalpath)
-    const coverimage = await uploadFileOnCloudinary(coverimageLocalpath)
+    const coverImage = await uploadFileOnCloudinary(coverimageLocalpath)
 
+    console.log("working 1");
+    
     if (!avatar){
         throw new APierror(400,"PLEASE UPLOAD AVTAR FILE")
     }
 
-    const user = User.create({
-        username : username.toLowercase(),
+    console.log("working 1");
+
+    const user = await User.create({
+        username : username.toLowerCase(),
         email,
         fullname,
         avatar: avatar.url,
-        coverimage: coverimage?.url || "",
-        email,
+        coverImage: coverImage?.url || "",
         password
 
     }) 
+
+    console.log("working 1");
 
     const checkforUser = await User.findById(user._id).select(
         "-password -refresedToken"
