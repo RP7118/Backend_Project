@@ -1,12 +1,12 @@
 class APierror extends Error{
     constructor(
-        statudcode,
+        statuscode,
         message ="Something went wrong",
         error = [],
         stack = ""
     ){
         super(message)
-        this.statudcode = statudcode
+        this.statuscode = statuscode
         this.data = data
         this.message = message
         this.success = false;
