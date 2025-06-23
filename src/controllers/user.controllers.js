@@ -3,19 +3,20 @@ import {User} from "../models/user.models.js"
 import { uploadFileOnCloudinary } from "../utils/cloudinary.js"
 import {APierror} from "../utils/APierror.js"
 import {APiResponse} from "../utils/APiresponse.js"
+import jwt from "jsonwebtoken"
 
 
 const generateAccessTokenAndRefreshToken = async(userId) =>{
     try{
         
-    const user = User.findById(userId)
-    const accessToken = user.generateAccessToken()
-    const refresedToken = user.generateRefreshToken()
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refresedToken = user.generateRefreshToken()
 
-    user.refresedToken= refresedToken
-    await user.save({validateBeforeSave : false})
+        user.refresedToken= refresedToken
+        await user.save({validateBeforeSave : false})
 
-    return{accessToken,refresedToken}
+        return{ accessToken , refresedToken }
     }catch(error){
         throw new APierror(500,"something went wrong with the generation of accesstoken or refreshtoken")
     }
@@ -45,18 +46,13 @@ const registerUser = asyncHandler( async(req, res)=>{
     const existeduser = await User.findOne({
         $or:[{username},{email}]
     })
-
-    console.log("working1");
     
     if(existeduser){
         console.log("user already exists");
     }
-    console.log("working1");
     
     const avatarLocalpath = await req.files?.avatar[0]?.path;
     const coverimageLocalpath = await req.files?.coverImage[0]?.path;
-
-    console.log("working1");
 
     if(!avatarLocalpath){
         throw new APierror(400,"Please upload Avtar file ")
@@ -64,14 +60,10 @@ const registerUser = asyncHandler( async(req, res)=>{
 
     const avatar =await uploadFileOnCloudinary(avatarLocalpath)
     const coverImage = await uploadFileOnCloudinary(coverimageLocalpath)
-
-    console.log("working 1");
     
     if (!avatar){
         throw new APierror(400,"PLEASE UPLOAD AVTAR FILE")
     }
-
-    console.log("working 1");
 
     const user = await User.create({
         username : username.toLowerCase(),
@@ -82,8 +74,6 @@ const registerUser = asyncHandler( async(req, res)=>{
         password
 
     }) 
-
-    console.log("working 1");
 
     const checkforUser = await User.findById(user._id).select(
         "-password -refresedToken"
@@ -107,7 +97,8 @@ const loginUser = asyncHandler(async (req,res)=>
     //access and referesh token
     //send cookie
 
-    const {email,username,password} = req.body
+    const {email, username, password} = req.body
+    console.log(email);
 
     if([email,username,password].some((feild)=>
         feild?.trim()==="")){
@@ -115,7 +106,7 @@ const loginUser = asyncHandler(async (req,res)=>
         }
 
     const user = await User.findOne({
-        $or:[{emai},{username}]
+        $or:[{email},{username}]
     })
 
     if(!user){
@@ -127,13 +118,12 @@ const loginUser = asyncHandler(async (req,res)=>
     if(!isPasswordValid){
         throw new APierror(400,"Wrong password Try again")
     }
-
-    const {accessToken,refresedToken} = generateAccessTokenAndRefreshToken(user._id)
-
+    
+    const {accessToken,refresedToken} = await generateAccessTokenAndRefreshToken(user._id)
     const loggedInuser = await User.findById(user._id).select(
     "-password -refresedToken"
     )
-
+    
     const option ={
         httpOnly : true,
         secure : true
@@ -155,10 +145,11 @@ const loginUser = asyncHandler(async (req,res)=>
 })
 
 const logout = asyncHandler(async(req,res)=>{
+    
     await User.findByIdAndUpdate(req.user._id,
         {
             $unset:{
-            refresedToken:1
+            refresedToken: undefined
             }
         },{
             new: true
@@ -184,4 +175,42 @@ const logout = asyncHandler(async(req,res)=>{
     )
 }
 )
-export { registerUser ,loginUser ,logout }
+
+const RefreshAccessToken = asyncHandler(async(req,res)=>{
+
+    try {
+        const IncomingRefreshToken = req.cookies.refreshToken || req.body?.refreshToken
+    
+        if(!IncomingRefreshToken){
+            throw new APierror(400,"Invalid RefreshToken")
+        }
+    
+        const deocdedRefreshToken = await jwt.verify(IncomingRefreshToken,process.env.ACCESS_TOKEN)
+    
+        const user = awaitUser.findById(deocdedRefreshToken?._id)
+    
+        if (!user){
+            throw new APierror(400,"Invalid AccessToken")
+        }
+    
+        if (deocdedRefreshToken !== user.refreshToken){
+            throw new APierror(400,"AccessToken expired or Invalid accesstoken")
+        }
+    
+        const {accessToken,newRefreshToken} = await generateAccessTokenAndRefreshToken(user._id)
+    
+        return res
+        .status(200)
+        .cookie("accessToken",accessToken)
+        .cookie("refreshtoken",newRefreshToken)
+        .json(
+            new APiResponse(200,
+                {accessToken,"newrefreshToken":newRefreshToken},
+                "new refreshToken is created"
+            )
+        )
+    } catch (error) {
+        throw new APierror(400,"something went wrong in RefreshToken generation")
+    }
+})
+export { registerUser ,loginUser ,logout,RefreshAccessToken }

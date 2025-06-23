@@ -1,4 +1,4 @@
-import asyncHandler from "../utils/asyncHandler"
+import asyncHandler from "../utils/asyncHandler.js"
 import {APierror} from "../utils/APierror.js"
 import Jwt from "jsonwebtoken"
 import {User} from "../models/user.models.js"
@@ -20,7 +20,7 @@ export const verifyJWT = asyncHandler(async (req,res,next)=>{
       }
    
       req.user = user
-   
+            
       next();
    } catch (error) {
       throw new APierror(400,error?.message || "invalid access token")
