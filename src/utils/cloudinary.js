@@ -15,7 +15,7 @@ const uploadFileOnCloudinary = async (local_file_path) => {
         })
         //file successfully uploaded
 
-        console.log("file has been uploaded",response.url);
+        console.log("file has been uploaded",response.);
         console.log(response);
         return response;
         
@@ -27,4 +27,20 @@ const uploadFileOnCloudinary = async (local_file_path) => {
 
 }
 
-export {uploadFileOnCloudinary}
+const deletFileFromCloudinary = async (cloudinaryPath)=>{
+
+    const parts = cloudinaryPath.split("/") 
+    const filenamewithdot = parts[parts.length - 1]
+    const filename = filenamewithdot.split(".")[0]
+
+    const foldername = parts.slice(parts.length -2,parts.length -1)
+    const folderpath = foldername.join("/")
+
+    const public_id = `${folderpath}/${filename}`
+
+    cloudinary.uploader.destroy(public_id)
+
+    console.log("file has been deleted from cloudinary")
+}
+
+export {uploadFileOnCloudinary,deletFileFromCloudinary}

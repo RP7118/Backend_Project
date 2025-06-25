@@ -1,6 +1,6 @@
 import asyncHandler from "../utils/asyncHandler.js"
 import {User} from "../models/user.models.js"
-import { uploadFileOnCloudinary } from "../utils/cloudinary.js"
+import { uploadFileOnCloudinary,deletFileFromCloudinary } from "../utils/cloudinary.js"
 import {APierror} from "../utils/APierror.js"
 import {APiResponse} from "../utils/APiresponse.js"
 import jwt from "jsonwebtoken"
@@ -213,4 +213,120 @@ const RefreshAccessToken = asyncHandler(async(req,res)=>{
         throw new APierror(400,"something went wrong in RefreshToken generation")
     }
 })
+
+
+const changePassword = asyncHandler(async(req,res)=>{
+
+    const {oldPassword,newPassword} = req.body
+
+    if([oldPassword,newPassword].some((feild)=>
+    feild?.trim()==="")){
+        throw new APierror(400,"Please enter oldpassword and new password")
+    }
+
+    const user = await User.findById(req.user?._id)
+
+    if(!user){
+        throw new APierror(400,"Invalid crencials")
+    }
+
+    const isoldPasswordRight = await user.isPasswordCorrect(oldPassword)
+
+    if (!isoldPasswordRight){
+        throw new APierror(400,"Wrong oldPassword")
+    }
+
+    user.password=newPassword
+    await user.save({validateBeforeSave:false})
+
+    return res.status(200).json(
+        APiResponse(200,"Password has been changed")
+    )
+
+})
+
+const updateAccountDetails = asyncHandler(async(req,res)=>{
+
+    const {username,fullname,email} = req.body
+
+    if ([username,fullname,email].some((feild)=>
+    feild?.trim()==="")){
+        throw new APierror(400,"please give the feilds that you want to change")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user?._id,{
+        $set:{
+            fullname,
+            email
+        }
+    },{new:true}).select("-password")
+
+    return res
+    .status(200)
+    .json(APiResponse(200,user,"Account details updated"))
+})
+
+const currentUser = asyncHandler(async(req,res)=>{
+    return res.status(200)
+    .json(APiResponse(200,req.user,"this is current user"))
+})
+
+const changeAvatar = asyncHandler(async(req,res)=>{
+    const {avatar} = req.files?.path
+
+    const {oldAvatar} = req.user?.avatar
+
+    await deletFileFromCloudinary(oldAvatar)
+
+
+
+    if(!avatar){
+        throw new APierror(400,"upload right document")
+    }
+
+    const newavatar = await uploadFileOnCloudinary(avatar)
+    const user = await User.findByIdAndUpdate(req.user?._id,{
+
+        $set:{
+
+            avatar: newavatar
+        }},{new:true}).select("-password")
+
+    return res.status(200)
+    .json(APiResponse(200,user,"updatation of avatar has completed"))
+
+})
+
+const changeCoverImage = asyncHandler(async(req,res)=>
+{
+    const {coverImage} = req.files?.path
+
+    const oldCoverImage = req.user?.coverImage
+
+    if(!coverImage){
+        throw new APierror(400,"please upload coverimage")
+    }
+
+    await deletFileFromCloudinary(oldCoverImage)
+
+    const newCoverImage = await uploadFileOnCloudinary(coverImage)
+
+    if(!newCoverImage){
+        throw new APierror(400,"coveeimage is not uploading on cloudinary")
+    }
+    const user = await User.findByIdAndUpdate(req.user?._id,{
+        $set:{
+            coverImage: newCoverImage.url
+        }
+    },
+    {new:true})
+    .select("-password")
+
+    return res.status(200)
+    .json(
+        APiResponse(200,user,"coverImage changed successfully")
+    )
+})
+
+
 export { registerUser ,loginUser ,logout,RefreshAccessToken }
