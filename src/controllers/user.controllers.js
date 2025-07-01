@@ -4,6 +4,8 @@ import { uploadFileOnCloudinary,deletFileFromCloudinary } from "../utils/cloudin
 import {APierror} from "../utils/APierror.js"
 import {APiResponse} from "../utils/APiresponse.js"
 import jwt from "jsonwebtoken"
+import { subscription } from "../models/subscription.models.js"
+import mongoose from "mongoose"
 
 
 const generateAccessTokenAndRefreshToken = async(userId) =>{
@@ -328,5 +330,88 @@ const changeCoverImage = asyncHandler(async(req,res)=>
     )
 })
 
+const getUserChannelProfile = asyncHandler(async(req,res)=>{
+    const {username} = req.params
 
+    if(!username?.trim()){
+        throw new APierror(400,"could not find the user") 
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match:{
+                usename : username?.toLowerCase()
+            }
+        },
+        {
+            $lookup:{
+                from:"subscription",
+                localField:"_id",
+                foreignField:"channel",
+                as:"subscribers"
+            }
+        },
+        {
+            $lookup:{
+                from:"subscription",
+                localField:"_id",
+                foreignField:"subsciber",
+                as:"subscribedTo"
+            }
+        },
+        {
+            $addFields:{
+                subscriptionCount:{
+                    $size:"$subscribers"
+                },
+                channelsubscribedcount:{
+                    $size:"$subscribedTo"
+                },
+                issubscribed:{
+                    $con: {
+                        if:{$in:[req.user?._id,"subscribers.subscriber"]},
+                        then:true,
+                        else:false
+
+                    }
+                }
+            }
+        },
+        {
+            $project:{
+                fullname:1,
+                usename:1,
+                subscriptionCount:1,
+                channelsubscribedcount:1,
+                issubscribed:1,
+                avatar:1,
+                coverImage:1,
+                email:1
+            }
+        }
+    ])
+
+    if(!channel?.length){
+        throw new APierror(200,"channel not created")
+    }
+
+    return res.status(200)
+    .json(
+        APiResponse(200,channel[0],"channel has been shown")
+    )
+})
+
+const getWatchHistory = asyncHandler(async(req,res)=>{
+
+    await User.aggregate(
+        {
+            $match:{
+                _id:req.user?._id
+            }
+        },
+        {
+            
+        }
+    )
+})
 export { registerUser ,loginUser ,logout,RefreshAccessToken }
